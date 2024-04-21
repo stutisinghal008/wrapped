@@ -5,19 +5,22 @@ import com.example.cs_2340_assignment2.data.MessageData;
 import com.example.cs_2340_assignment2.data.User;
 import com.example.cs_2340_assignment2.data.UserScope;
 import com.example.cs_2340_assignment2.data.spotify.Wrapped;
-import com.google.firebase.firestore.FirebaseFirestore;
+import com.example.cs_2340_assignment2.ui.PostAdapter;
 import com.google.firebase.firestore.GeoPoint;
 
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Factory class for creating objects from POJO and API values.
  */
 public class Factory {
-    protected static FirebaseFirestore db = State.getDB();
 
     /**
      * Create users from POJO values.
@@ -29,16 +32,16 @@ public class Factory {
             throw new IllegalArgumentException("Object must be a Map! Invalid POJO!");
         } else {
             Map<String, Object> m = (Map<String, Object>) o;
-            Long id = (Long) m.get("id");
+            String id = (String) m.get("id");
             String username = (String) m.get("username");
             String password = (String) m.get("password");
 
-            List<Long> messages = (List<Long>) m.get("messages");
-            List<Long> likes = (List<Long>) m.get("likes");
-            List<Long> views = (List<Long>) m.get("views");
+            List<String> messages = (List<String>) m.get("messages");
+            List<String> likes = (List<String>) m.get("likes");
+            List<String> views = (List<String>) m.get("views");
 
-            List<Long> followers = (List<Long>) m.get("followers");
-            List<Long> following = (List<Long>) m.get("following");
+            List<String> followers = (List<String>) m.get("followers");
+            List<String> following = (List<String>) m.get("following");
 
             String s = (String) m.get("scope");
             UserScope scope = UserScope.valueOf(s);
@@ -69,25 +72,27 @@ public class Factory {
             throw new IllegalArgumentException("Object must be a Map! Invalid POJO!");
         } else {
             Map<String, Object> m = (Map<String, Object>) o;
-            int id = (int) m.get("id");
-            int root = (int) m.get("rootId");
-            int parent = (int) m.get("parentId");
+            String id = (String) m.get("id");
+            String root = (String) m.get("rootId");
+            String parent = (String) m.get("parentId");
+            String scope = (String) m.get("scope");
             Map<String, Object> content = (Map<String, Object>) m.get("content");
 
-            List<Long> authors = (List<Long>) m.get("authors");
-            List<Long> likes = (List<Long>) m.get("likes");
-            List<Long> views = (List<Long>) m.get("views");
-            List<Long> replies = (List<Long>) m.get("replies");
+            List<String> authors = (List<String>) m.get("authors");
+            List<String> likes = (List<String>) m.get("likes");
+            List<String> views = (List<String>) m.get("views");
+            List<String> replies = (List<String>) m.get("replies");
 
-            Date date = (Date) m.get("date");
-            boolean isDeleted = (boolean) m.get("isDeleted");
+            Date date = null;
+
+            boolean isDeleted = "true".equals(m.get("isDeleted"));
 
             MessageData data = new MessageData(
                     createWrapped(content.get("data")),
                     content.get("text").toString()
             );
 
-            return new Message(
+            var message = new Message(
                     root,
                     parent,
                     id,
@@ -99,6 +104,36 @@ public class Factory {
                     date,
                     isDeleted
             );
+            message.setScope(UserScope.valueOf(scope));
+            return message;
+        }
+    }
+
+    public static PostAdapter.Post createPost(Object o) {
+        if (!(o instanceof Map)) {
+            throw new IllegalArgumentException("Object must be a Map! Invalid POJO!");
+        } else {
+            Map<String, Object> m = (Map<String, Object>) o;
+            String author = (String) m.get("author");
+            String a1 = (String) m.get("artist1");
+            String a2 = (String) m.get("artist2");
+            String a3 = (String) m.get("artist3");
+            String a4 = (String) m.get("artist4");
+            String a5 = (String) m.get("artist5");
+            String t1 = (String) m.get("track1");
+            String t2 = (String) m.get("track2");
+            String t3 = (String) m.get("track3");
+            String t4 = (String) m.get("track4");
+            String t5 = (String) m.get("track5");
+            String genre = (String) m.get("genre");
+            long time = 0;
+            if (m.get("time") != null) {
+                time = Long.parseLong(m.get("time").toString());
+            }
+            var post = new PostAdapter.Post(author, a1, a2, a3, a4, a5, t1, t2, t3, t4, t5, genre);
+            post.setTime(time);
+            post.setId((String) m.get("id"));
+            return post;
         }
     }
 
@@ -108,36 +143,41 @@ public class Factory {
      * @param o POJO object
      */
     public static Wrapped createWrapped(Object o) {
+        if (o == null) {
+            return null;
+        }
         if (!(o instanceof Map)) {
             throw new IllegalArgumentException("Object must be a Map! Invalid POJO!");
         } else {
             Map<String, Object> m = (Map<String, Object>) o;
             Wrapped wr = new Wrapped();
-            var w = new ArrayList<Wrapped.Song>();
-            var ls = (List<Object>) m.get("wrapped");
-            for (Object ot : ls) {
-                Map<String, Object> mt = (Map<String, Object>) ot;
-                Map<String, Long> freq = (Map<String, Long>) mt.get("monthlyFrequencyOfListens");
-                Wrapped.Song s = new Wrapped.Song(
-                        (String) mt.get("title"),
-                        (List<String>) mt.get("artists"),
-                        (Long) mt.get("duration"),
-                        (String) mt.get("genre"),
-                        (GeoPoint) mt.get("mostPopularLocation"),
-                        (Long) mt.get("numerOfSecondsListened"),
-                        freq
-                );
-                w.add(s);
+            var t = new ArrayList<Wrapped.Track>();
+            var a = new ArrayList<Wrapped.Artist>();
+
+            for (Object track : (List<Object>) m.get("tracks")) {
+                Map<String, Object> tm = (Map<String, Object>) track;
+                t.add(new Wrapped.Track(
+                        tm.get("title").toString(),
+                        (List<String>) tm.get("artists"),
+                        tm.get("album_name").toString(),
+                        0,
+                        tm.get("uri").toString()
+                ));
             }
-            wr.setWrapped(null);
+            for (Object artist : (List<Object>) m.get("artists")) {
+                Map<String, Object> am = (Map<String, Object>) artist;
+                Collection<String> genres = new ArrayList<>();
+                for (Object genre : (List<Object>) am.get("genres")) {
+                    genres.add(genre.toString());
+                }
+                a.add(new Wrapped.Artist(
+                        am.get("name").toString(),
+                        genres,
+                        am.get("uri").toString()
+                ));
+            }
+
             return wr;
         }
-    }
-
-    /**
-     * Create SpotifyWrapper objects from API values.
-     */
-    public static class SpotifyFactory {
-
     }
 }

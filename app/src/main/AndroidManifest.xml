@@ -12,17 +12,50 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.CS2340Assignment2"
         tools:targetApi="31">
+
         <activity
-            android:name=".MainActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.CS2340Assignment2">
+            android:name=".ui.SplashScreenActivity"
+            android:exported="true"> <!-- Removed extra '>' character -->
+            <!-- Set exported to true and add the intent-filter here -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
+        <activity
+            android:name=".ui.LoginActivity"
+            android:exported="true"
+            android:label="@string/title_activity_login">
+            <!-- Remove the MAIN action and LAUNCHER category intent-filter from here -->
+        </activity>
+        <activity
+            android:name=".ui.SignupActivity"
+            android:exported="true"
+            android:label="@string/title_activity_signup"> <!-- Changed label to title_activity_signup -->
+            <!-- Remove the MAIN action and LAUNCHER category intent-filter from here -->
+        </activity>
+        <activity android:name=".ui.ProfileSettings"
+            android:exported="true">
 
+        </activity>
+        <activity android:name=".ui.MainActivity"
+            android:exported="true">
+            <!-- Other configuration for MainActivity -->
+
+            <!-- Intent filter to handle the redirect URI -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <!-- Handle the custom URI scheme -->
+                <data android:scheme="myappspotifyauth"
+                    android:host="callback" />
+            </intent-filter>
+        </activity>
+
+    </application>
+    <uses-permission android:name="android.permission.INTERNET" />
 </manifest>

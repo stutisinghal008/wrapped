@@ -1,257 +1,226 @@
 package com.example.cs_2340_assignment2.data.spotify;
 
-import androidx.annotation.Nullable;
+import org.apache.hc.core5.http.ParseException;
 
-import com.google.firebase.firestore.GeoPoint;
-
-import java.io.Serializable;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.concurrent.CompletableFuture;
+import com.example.cs_2340_assignment2.data.spotify.auth.TokenExchangeUtil;
 
-/**
- * Giant wrapper class for Spotify wrapped objects based on the Spotify API.
- */
-public class Wrapped implements Serializable {
-    public Collection<Song> wrapped;
+import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
+import se.michaelthelin.spotify.model_objects.specification.Paging;
+import se.michaelthelin.spotify.requests.data.personalization.simplified.GetUsersTopArtistsRequest;
+import se.michaelthelin.spotify.requests.data.personalization.simplified.GetUsersTopTracksRequest;
 
-    /**
-     * Default constructor.
-     */
+public class Wrapped {
+    private Collection<Track> tracks = new ArrayList<>();
+    private Collection<Artist> artists = new ArrayList<>();
     public Wrapped() {
-        this(new ArrayList<>());
+        this.artists = new ArrayList<>();
+        this.tracks = new ArrayList<>();
     }
 
-    /**
-     * Constructor with a varargs of songs.
-     *
-     * @param song varargs of songs
-     */
-    public Wrapped(Song... song) {
-        this.wrapped = new ArrayList<>();
-        Collections.addAll(wrapped, song);
+    public Wrapped(Collection<Track> tracks, Collection<Artist> artists) {
+        this.tracks = tracks;
+        this.artists = artists;
     }
 
-    /**
-     * Constructor with a collection of songs.
-     *
-     * @param wrapped collection of songs
-     */
-    public Wrapped(Collection<Song> wrapped) {
-        this.wrapped = wrapped;
+    public Collection<Track> getTracks() {
+        return tracks;
     }
 
-    /**
-     * Get the collection of songs.
-     *
-     * @return collection of songs
-     */
-    public Collection<Song> getWrapped() {
-        return wrapped;
+    public void setTracks(Collection<Track> tracks) {
+        this.tracks = tracks;
     }
 
-    /**
-     * Set the collection of songs.
-     *
-     * @param wrapped collection of songs
-     */
-    public void setWrapped(Collection<Song> wrapped) {
-        this.wrapped = wrapped;
+    public Collection<Artist> getArtists() {
+        return artists;
     }
 
-    /**
-     * Base Song class.
-     */
-    public static class Song implements Serializable {
-        private String title;
-        private List<String> artists;
-        private Long duration;
-        private String genre;
-        private GeoPoint mostPopularLocation;
-        private Long numberOfSecondsListened;
-        private Map<String, Long> monthlyFrequencyOfListens;
+    public void setArtists(Collection<Artist> artists) {
+        this.artists = artists;
+    }
 
-        /**
-         * Default constructor.
-         *
-         * @param title                    title of the song
-         * @param artists                  list of artists
-         * @param duration                 duration of the song
-         * @param genre                    genre of the song
-         * @param mostPopularLocation      most popular location of the song
-         * @param numberOfMinutesListened  number of minutes listened
-         * @param monthlyFrequencyOfListen monthly frequency of listens
-         */
-        public Song(String title, List<String> artists, Long duration, String genre, GeoPoint mostPopularLocation, Long numberOfMinutesListened, Map<String, Long> monthlyFrequencyOfListen) {
-            this.title = title;
-            this.artists = artists;
-            this.duration = duration;
-            this.genre = genre;
-            this.mostPopularLocation = mostPopularLocation;
-            this.numberOfSecondsListened = numberOfMinutesListened;
-            this.monthlyFrequencyOfListens = monthlyFrequencyOfListen;
+    public List<Artist> getTopArtists(int limit) {
+        return artists.stream().limit(limit).collect(Collectors.toList());
+    }
+
+    public List<Track> getTopTracks(int limit) {
+        return tracks.stream().limit(limit).collect(Collectors.toList());
+    }
+
+    public String findMostCommonGenre() {
+        List<Artist> topArtists = getTopArtists(5);
+        Map<String, Integer> genreCount = new HashMap<>();
+
+        for (Artist artist : topArtists) {
+            for (String genre : artist.getGenres()) {
+                genreCount.put(genre, genreCount.getOrDefault(genre, 0) + 1);
+            }
         }
 
-        /**
-         * Get the title of the song.
-         *
-         * @return title of the song
-         */
+        String mostCommonGenre = null;
+        int maxCount = 0;
+        for (Map.Entry<String, Integer> entry : genreCount.entrySet()) {
+            if (entry.getValue() > maxCount) {
+                maxCount = entry.getValue();
+                mostCommonGenre = entry.getKey();
+            }
+        }
+
+        return mostCommonGenre;
+    }
+
+
+    public void convertPagingToArtist(String selectedTerm1) throws IOException, ParseException, SpotifyWebApiException {
+        final CompletableFuture<Paging<se.michaelthelin.spotify.model_objects.specification.Artist>> pagingFuture = TokenExchangeUtil.getSpotifyApi().getUsersTopArtists().time_range(selectedTerm1).build().executeAsync();
+        Paging<se.michaelthelin.spotify.model_objects.specification.Artist> artistPaging = pagingFuture.join();
+        se.michaelthelin.spotify.model_objects.specification.Artist[] itemArray = artistPaging.getItems();
+        artists.clear();
+        for (var item : itemArray) {
+            Artist artist = new Artist(item.getName(), Arrays.stream(item.getGenres()).toList(), item.getUri());
+            artists.add(artist);
+        }
+    }
+
+    public void convertPagingToTrack(String selectedTerm1) throws IOException, ParseException, SpotifyWebApiException {
+        final CompletableFuture<Paging<se.michaelthelin.spotify.model_objects.specification.Track>> pagingFuture = TokenExchangeUtil.getSpotifyApi().getUsersTopTracks().time_range(selectedTerm1).build().executeAsync();
+        Paging<se.michaelthelin.spotify.model_objects.specification.Track> trackPaging = pagingFuture.join();
+        se.michaelthelin.spotify.model_objects.specification.Track[] itemArray = trackPaging.getItems();
+        tracks.clear();
+        for (var item : itemArray) {
+            var artists = Arrays.stream(item.getArtists()).toList();
+            List<String> artistName = new ArrayList<>();
+            for (var a : artists) {
+                artistName.add(a.getName());
+            }
+            Track track = new Track(item.getName(), artistName, item.getAlbum().getName(), item.getPopularity(), item.getUri());
+            tracks.add(track);
+        }
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Artists: {");
+        for (Artist artist : artists) {
+            sb.append("{");
+            sb.append(artist.getName());
+            sb.append(", ");
+            sb.append(artist.getGenres());
+            sb.append("}");
+            sb.append(", ");
+        }
+        sb.append("}\nTracks: {");
+        for (Track track : tracks) {
+            sb.append(track.getTitle());
+            sb.append(", ");
+        }
+        sb.append("}");
+        return sb.toString();
+    }
+
+
+    public static class Track {
+        public Track() {
+        }
+        public Track(String title, Collection<String> artists, String album_name, long popularity, String uri) {
+            this.title = title;
+            this.artists = artists;
+            this.album_name = album_name;
+            this.popularity = popularity;
+            this.uri = uri;
+        }
+
+        private String title;
+        private Collection<String> artists;
+        private String album_name;
+        private long popularity;
+        private String uri;
+
         public String getTitle() {
             return title;
         }
 
-        /**
-         * Set the title of the song.
-         *
-         * @param title title of the song
-         */
         public void setTitle(String title) {
             this.title = title;
         }
 
-        /**
-         * Get the list of artists.
-         *
-         * @return list of artists
-         */
-        public List<String> getArtists() {
+        public Collection<String> getArtists() {
             return artists;
         }
 
-        /**
-         * Set the list of artists.
-         *
-         * @param artists list of artists
-         */
-        public void setArtists(List<String> artists) {
+        public void setArtists(Collection<String> artists) {
             this.artists = artists;
         }
 
-        /**
-         * Get the duration of the song.
-         *
-         * @return duration of the song
-         */
-        public double getDuration() {
-            return duration;
+        public String getAlbum_name() {
+            return album_name;
         }
 
-        /**
-         * Set the duration of the song.
-         *
-         * @param duration duration of the song
-         */
-        public void setDuration(Long duration) {
-            this.duration = duration;
+        public void setAlbum_name(String album_name) {
+            this.album_name = album_name;
         }
 
-        /**
-         * Get the genre of the song.
-         *
-         * @return genre of the song
-         */
-        public String getGenre() {
-            return genre;
+        public long getPopularity() {
+            return popularity;
         }
 
-        /**
-         * Set the genre of the song.
-         *
-         * @param genre genre of the song
-         */
-        public void setGenre(String genre) {
-            this.genre = genre;
+        public void setPopularity(long popularity) {
+            this.popularity = popularity;
         }
 
-        /**
-         * Get the most popular location of the song.
-         *
-         * @return most popular location of the song
-         */
-        public GeoPoint getMostPopularLocation() {
-            return mostPopularLocation;
+        public String getUri() {
+            return uri;
         }
 
-        /**
-         * Set the most popular location of the song.
-         *
-         * @param mostPopularLocation most popular location of the song
-         */
-        public void setMostPopularLocation(GeoPoint mostPopularLocation) {
-            this.mostPopularLocation = mostPopularLocation;
-        }
-
-        /**
-         * Get the number of seconds listened.
-         *
-         * @return number of seconds listened
-         */
-        public double getNumberOfSecondsListened() {
-            return numberOfSecondsListened;
-        }
-
-        /**
-         * Set the number of seconds listened.
-         *
-         * @param numberOfSecondsListened number of seconds listened
-         */
-        public void setNumberOfSecondsListened(Long numberOfSecondsListened) {
-            this.numberOfSecondsListened = numberOfSecondsListened;
-        }
-
-        /**
-         * Get the monthly frequency of listens.
-         *
-         * @return monthly frequency of listens
-         */
-        public Map<String, Long> getMonthlyFrequencyOfListens() {
-            return monthlyFrequencyOfListens;
-        }
-
-        /**
-         * Set the monthly frequency of listens.
-         *
-         * @param monthlyFrequencyOfListens monthly frequency of listens
-         */
-        public void setMonthlyFrequencyOfListens(Map<String, Long> monthlyFrequencyOfListens) {
-            this.monthlyFrequencyOfListens = monthlyFrequencyOfListens;
-        }
-
-        /**
-         * Equals method for Song.
-         *
-         * @param o object to compare
-         * @return true if equal, false otherwise
-         */
-        @Override
-        public boolean equals(@Nullable Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            Song song = (Song) o;
-            return title.equals(song.title) &&
-                    artists.equals(song.artists) &&
-                    duration.equals(song.duration) &&
-                    genre.equals(song.genre) &&
-                    mostPopularLocation.equals(song.mostPopularLocation) &&
-                    numberOfSecondsListened.equals(song.numberOfSecondsListened) &&
-                    monthlyFrequencyOfListens.equals(song.monthlyFrequencyOfListens);
+        public void setUri(String uri) {
+            this.uri = uri;
         }
     }
 
-    /**
-     * Equals method for Wrapped.
-     *
-     * @param obj object to compare
-     * @return true if equal, false otherwise
-     */
-    @Override
-    public boolean equals(@Nullable Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Wrapped wrapped = (Wrapped) obj;
-        return this.wrapped.equals(wrapped.wrapped);
+    public static class Artist {
+        private String name;
+        private Collection<String> genres;
+        private String uri;
+
+        public Artist() {
+
+        }
+
+        public Artist(String name, Collection<String> genres, String uri) {
+            this.name = name;
+            this.genres = genres;
+            this.uri = uri;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public Collection<String> getGenres() {
+            return genres;
+        }
+
+        public void setGenres(Collection<String> genres) {
+            this.genres = genres;
+        }
+
+        public String getUri() {
+            return uri;
+        }
+
+        public void setUri(String uri) {
+            this.uri = uri;
+        }
     }
 }

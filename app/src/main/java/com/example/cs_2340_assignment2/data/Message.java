@@ -7,29 +7,31 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Represents a message in the app.
  */
 public class Message implements Serializable {
-    private long id;
-    private long rootId;
-    private long parentId;
 
-    private Collection<Long> likes; // userids
-    private Collection<Long> views; // userids
-    private Collection<Long> replies; // messageids
+    private String id;
+    private String rootId;
+    private String parentId;
 
+    private Collection<String> likes; // userids
+    private Collection<String> views; // userids
+    private Collection<String> replies; // messageids
     private MessageData content; // message data
-    private Collection<Long> authors; // userids
+    private Collection<String> authors; // userids
     private Date date; // date sent
     private boolean isDeleted;
+    private UserScope scope;
 
     /**
      * Default constructor.
      */
     public Message() {
-        this(0, 0, new MessageData(), new ArrayList<>());
+        this("", "0", new MessageData(), new ArrayList<>());
     }
 
     /**
@@ -39,26 +41,31 @@ public class Message implements Serializable {
      * @param content message data
      * @param authors collection of authors
      */
-    public Message(long id, MessageData content, Collection<Long> authors) {
-        this(0, id, content, authors);
+    public Message(String id, MessageData content, Collection<String> authors) {
+        this("", id, content, authors);
     }
 
     /**
      * Constructor with a parent message id, message id, message data, and a collection of authors.
-     * (id 0 is root).
+     * (id "" is root).
      *
      * @param parent  parent message id
      * @param id      message id
      * @param content message data
      * @param authors collection of authors
      */
-    public Message(long parent, long id, MessageData content, Collection<Long> authors) {
-        if (parent == 0) {
-            this.rootId = 0;
-            this.parentId = 0;
+    public Message(String parent, String id, MessageData content, Collection<String> authors) {
+        if (parent.equals("")) {
+            this.rootId = "";
+            this.parentId = "";
         } else {
-            this.rootId = State.getInstance().getMessages().get((int) parent).rootId;
-            this.parentId = parent;
+            try {
+                this.rootId = Objects.requireNonNull(State.getInstance().getMessages().get(parent)).rootId;
+                this.parentId = parent;
+            } catch (NullPointerException e) {
+                this.rootId = "";
+                this.parentId = "";
+            }
         }
         this.id = id;
         this.content = content;
@@ -83,14 +90,14 @@ public class Message implements Serializable {
      * @param date      date
      * @param isDeleted boolean
      */
-    public Message(long root,
-                   long parent,
-                   long id,
+    public Message(String root,
+                   String parent,
+                   String id,
                    MessageData data,
-                   List<Long> authors,
-                   List<Long> likes,
-                   List<Long> views,
-                   List<Long> replies,
+                   List<String> authors,
+                   List<String> likes,
+                   List<String> views,
+                   List<String> replies,
                    Date date,
                    boolean isDeleted) {
         this.rootId = root;
@@ -110,7 +117,7 @@ public class Message implements Serializable {
      *
      * @return message id
      */
-    public long getId() {
+    public String getId() {
         return id;
     }
 
@@ -119,7 +126,7 @@ public class Message implements Serializable {
      *
      * @return root message id
      */
-    public long getRootId() {
+    public String getRootId() {
         return rootId;
     }
 
@@ -128,7 +135,7 @@ public class Message implements Serializable {
      *
      * @return parent message id
      */
-    public long getParentId() {
+    public String getParentId() {
         return parentId;
     }
 
@@ -137,7 +144,7 @@ public class Message implements Serializable {
      *
      * @return collection of likes
      */
-    public Collection<Long> getLikes() {
+    public Collection<String> getLikes() {
         return likes;
     }
 
@@ -146,7 +153,7 @@ public class Message implements Serializable {
      *
      * @return collection of views
      */
-    public Collection<Long> getViews() {
+    public Collection<String> getViews() {
         return views;
     }
 
@@ -155,7 +162,7 @@ public class Message implements Serializable {
      *
      * @return collection of replies
      */
-    public Collection<Long> getReplies() {
+    public Collection<String> getReplies() {
         return replies;
     }
 
@@ -173,7 +180,7 @@ public class Message implements Serializable {
      *
      * @return collection of authors
      */
-    public Collection<Long> getAuthors() {
+    public Collection<String> getAuthors() {
         return authors;
     }
 
@@ -200,7 +207,7 @@ public class Message implements Serializable {
      *
      * @param id message id
      */
-    public void setId(long id) {
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -209,7 +216,7 @@ public class Message implements Serializable {
      *
      * @param rootId root message id
      */
-    public void setRootId(long rootId) {
+    public void setRootId(String rootId) {
         this.rootId = rootId;
     }
 
@@ -218,7 +225,7 @@ public class Message implements Serializable {
      *
      * @param parentId parent message id
      */
-    public void setParentId(long parentId) {
+    public void setParentId(String parentId) {
         this.parentId = parentId;
     }
 
@@ -227,7 +234,7 @@ public class Message implements Serializable {
      *
      * @param likes collection of likes
      */
-    public void setLikes(Collection<Long> likes) {
+    public void setLikes(Collection<String> likes) {
         this.likes = likes;
     }
 
@@ -236,7 +243,7 @@ public class Message implements Serializable {
      *
      * @param views collection of views
      */
-    public void setViews(Collection<Long> views) {
+    public void setViews(Collection<String> views) {
         this.views = views;
     }
 
@@ -245,7 +252,7 @@ public class Message implements Serializable {
      *
      * @param replies collection of replies
      */
-    public void setReplies(Collection<Long> replies) {
+    public void setReplies(Collection<String> replies) {
         this.replies = replies;
     }
 
@@ -263,7 +270,7 @@ public class Message implements Serializable {
      *
      * @param authors collection of authors
      */
-    public void setAuthors(Collection<Long> authors) {
+    public void setAuthors(Collection<String> authors) {
         this.authors = authors;
     }
 
@@ -344,8 +351,24 @@ public class Message implements Serializable {
      *
      * @param messageId message id
      */
-    public void deleteReply(long messageId) {
+    public void deleteReply(String messageId) {
         replies.remove(messageId);
+    }
+
+    /**
+     * Get the scope of the message.
+     * @return scope
+     */
+    public UserScope getScope() {
+        return scope;
+    }
+
+    /**
+     * Set the scope of the message.
+     * @param scope scope
+     */
+    public void setScope(UserScope scope) {
+        this.scope = scope;
     }
 
     /**
